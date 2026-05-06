@@ -1,0 +1,44 @@
+# Execute a SQL query and return all rows as dictionaries.
+# Each row maps column names to values.
+# Column types are preserved: INTEGER → Int, REAL → Float, TEXT → String, NULL → null.
+# Use query_params when you need to bind values to '?' placeholders.
+def query
+    @param db Connection
+    @param sql String
+    @return Dictionary[]
+do
+  let stmt Ptr? = null
+  let tail Ptr? = null
+  let rc = sqlite3_prepare_v2(db.handle, sql, -1, stmt, tail)
+  if rc != SQLITE_OK
+    throw Error("forsqlite.query prepare failed: " + sqlite3_errmsg(db.handle))
+  end
+  let rows = collect_rows(stmt)
+  sqlite3_finalize(stmt)
+  rows
+end
+
+test query
+it 'returns rows as dictionaries keyed by column name'
+  let db = open(':memory:')
+  exec(db, 'CREATE TABLE t (i INTEGER, s TEXT)')
+  exec(db, "INSERT INTO t VALUES (7, 'seven')")
+  exec(db, "INSERT INTO t VALUES (8, 'eight')")
+  let rows = query(db, 'SELECT i, s FROM t ORDER BY i')
+  assert.equals(length(rows), 2)
+  assert.equals(getInt(rows[0], 'i'), 7)
+  assert.equals(getString(rows[1], 's'), 'eight')
+  close(db)
+end
+it 'throws on invalid SQL'
+  let db = open(':memory:')
+  var threw = false
+  try
+    query(db, 'SELECT FROM nowhere')
+  catch e
+    threw = true
+  end
+  assert.isTrue(threw)
+  close(db)
+end
+end

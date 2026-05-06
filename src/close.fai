@@ -1,0 +1,18 @@
+# Close a database connection and release its resources.
+# Throws if SQLite reports an error (e.g. connection is still busy).
+def close
+    @param db Connection
+    @return Void
+do
+  let rc = sqlite3_close(db.handle)
+  if rc != SQLITE_OK
+    throw Error("forsqlite.close failed")
+  end
+end
+
+test close
+it 'releases an opened connection without error'
+  let db = open(':memory:')
+  close(db)
+end
+end

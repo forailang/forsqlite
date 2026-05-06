@@ -1,0 +1,35 @@
+# Execute a SQL statement that returns no rows (CREATE, INSERT, UPDATE, DELETE).
+# Throws on error.
+def exec
+    @param db Connection
+    @param sql String
+    @return Void
+do
+  let err Ptr? = null
+  let rc = sqlite3_exec(db.handle, sql, null, null, err)
+  if rc != SQLITE_OK
+    throw Error("forsqlite.exec failed: " + sqlite3_errmsg(db.handle))
+  end
+end
+
+test exec
+it 'creates a table and inserts a row'
+  let db = open(':memory:')
+  exec(db, 'CREATE TABLE t (i INTEGER)')
+  exec(db, 'INSERT INTO t VALUES (1)')
+  let rows = query(db, 'SELECT i FROM t')
+  assert.equals(getInt(rows[0], 'i'), 1)
+  close(db)
+end
+it 'throws on invalid SQL'
+  let db = open(':memory:')
+  var threw = false
+  try
+    exec(db, 'NOT A VALID STATEMENT')
+  catch e
+    threw = true
+  end
+  assert.isTrue(threw)
+  close(db)
+end
+end

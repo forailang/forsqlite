@@ -1,0 +1,22 @@
+# Open a SQLite database at the given path.
+# Use ':memory:' for an in-memory database.
+# Throws on failure.
+def open
+    @param path String
+    @return Connection
+do
+  let db Ptr? = null
+  let rc = sqlite3_open(path, db)
+  if rc != SQLITE_OK
+    throw Error("forsqlite.open failed: " + sqlite3_errmsg(db))
+  end
+  Connection(handle: db)
+end
+
+test open
+it 'opens an in-memory database'
+  let db = open(':memory:')
+  assert.isNotNull(db.handle)
+  close(db)
+end
+end

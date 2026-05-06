@@ -1,0 +1,164 @@
+use std.array
+
+use std.convert
+
+use std.dictionary
+
+private:
+
+# Internal helpers — not part of the public API.
+# private: is sticky: everything below this line in this file is private.
+def collect_rows
+    @param stmt Ptr?
+    @return Dictionary[]
+do
+  let ncols = sqlite3_column_count(stmt)
+  var rows Dictionary[] = []
+  var step = sqlite3_step(stmt)
+  while step == SQLITE_ROW
+    var row Dictionary = {}
+    for i in 0..ncols
+      let col_name = sqlite3_column_name(stmt, i)
+      let col_type = sqlite3_column_type(stmt, i)
+      if col_type == COL_INTEGER
+        row = dictionary.set(row, col_name, sqlite3_column_int(stmt, i))
+      else
+        if col_type == COL_FLOAT
+          row = dictionary.set(row, col_name, sqlite3_column_double(stmt, i))
+        else
+          if col_type == COL_NULL
+            row = dictionary.set(row, col_name, null)
+          else
+            row = dictionary.set(row, col_name, sqlite3_column_text(stmt, i))
+          end
+        end
+      end
+    end
+    rows = array.append(rows, row)
+    step = sqlite3_step(stmt)
+  end
+  rows
+end
+
+# SQLite stores booleans as 0/1 INTEGERs by convention. The value
+# binding path uses this to widen a forai Bool to the int the C API
+# wants; without it Bool values would fall through to the text branch
+# and land in the database as the string "true"/"false".
+def bool_to_int
+    @param b Bool
+    @return Int
+do
+  if b
+    1
+  else
+    0
+  end
+end
+
+# Bind a positional parameter array onto a prepared statement using
+# `?` placeholders. Dispatches on the runtime type of each value:
+# null → bind_null, Bool → bind_int (0/1), Int → bind_int,
+# Float → bind_double, anything else → bind_text via interpolation.
+def bind_params
+    @param stmt Ptr?
+    @param params Unknown[]
+    @return Void
+do
+  let n = array.length(params)
+  for i in 0..n
+    let val = params[i]
+    let idx = i + 1
+    if is_null(val)
+      sqlite3_bind_null(stmt, idx)
+    else
+      if is_bool(val)
+        sqlite3_bind_int(stmt, idx, bool_to_int(convert.toBool(val)))
+      else
+        if is_int(val)
+          sqlite3_bind_int(stmt, idx, val)
+        else
+          if is_float(val)
+            sqlite3_bind_double(stmt, idx, val)
+          else
+            sqlite3_bind_text(stmt, idx, "{{val}}", -1, null)
+          end
+        end
+      end
+    end
+  end
+end
+
+test bool_to_int
+it 'returns 1 for true'
+  assert.equals(bool_to_int(true), 1)
+end
+it 'returns 0 for false'
+  assert.equals(bool_to_int(false), 0)
+end
+end
+
+test collect_rows
+it 'preserves INTEGER, REAL, TEXT, NULL column types'
+  let db = open(':memory:')
+  exec(db, 'CREATE TABLE t (i INTEGER, r REAL, s TEXT, n INTEGER)')
+  exec(db, "INSERT INTO t VALUES (1, 2.5, 'hi', NULL)")
+  let rows = query(db, 'SELECT i, r, s, n FROM t')
+  assert.equals(length(rows), 1)
+  assert.equals(getInt(rows[0], 'i'), 1)
+  assert.equals(getString(rows[0], 's'), 'hi')
+  assert.isNull(get(rows[0], 'n'))
+  close(db)
+end
+it 'returns an empty array when the query has no matches'
+  let db = open(':memory:')
+  exec(db, 'CREATE TABLE t (i INTEGER)')
+  let rows = query(db, 'SELECT * FROM t')
+  assert.equals(length(rows), 0)
+  close(db)
+end
+end
+
+test bind_params
+it 'binds Int values as INTEGER'
+  let db = open(':memory:')
+  exec(db, 'CREATE TABLE t (v INTEGER)')
+  exec_params(db, 'INSERT INTO t VALUES (?)', [42])
+  let rows = query(db, 'SELECT v FROM t')
+  assert.equals(getInt(rows[0], 'v'), 42)
+  close(db)
+end
+it 'binds Bool values as 0 or 1 INTEGER'
+  let db = open(':memory:')
+  exec(db, 'CREATE TABLE t (v INTEGER)')
+  exec_params(db, 'INSERT INTO t VALUES (?)', [true])
+  exec_params(db, 'INSERT INTO t VALUES (?)', [false])
+  let rows = query(db, 'SELECT v FROM t ORDER BY rowid')
+  assert.equals(getInt(rows[0], 'v'), 1)
+  assert.equals(getInt(rows[1], 'v'), 0)
+  close(db)
+end
+it 'binds Float values as REAL'
+  let db = open(':memory:')
+  exec(db, 'CREATE TABLE t (v REAL)')
+  exec_params(db, 'INSERT INTO t VALUES (?)', [2.5])
+  let rows = query(db, 'SELECT v FROM t')
+  assert.equals(get(rows[0], 'v'), 2.5)
+  close(db)
+end
+it 'binds null values as NULL'
+  let db = open(':memory:')
+  exec(db, 'CREATE TABLE t (v INTEGER)')
+  exec_params(db, 'INSERT INTO t VALUES (?)', [null])
+  let rows = query(db, 'SELECT v FROM t')
+  assert.isNull(get(rows[0], 'v'))
+  close(db)
+end
+it 'binds String values as TEXT'
+  let db = open(':memory:')
+  exec(db, 'CREATE TABLE t (v TEXT)')
+  exec_params(db, 'INSERT INTO t VALUES (?)', ['hello'])
+  let rows = query(db, 'SELECT v FROM t')
+  assert.equals(getString(rows[0], 'v'), 'hello')
+  close(db)
+end
+end

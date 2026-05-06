@@ -1,0 +1,12 @@
+# Return the version string of the linked SQLite library (e.g. "3.45.1").
+def version
+    @return String
+do
+  sqlite3_libversion()
+end
+
+test version
+it 'returns a sqlite3 major-version string'
+  assert.isTrue(length(version()) > 0)
+end
+end

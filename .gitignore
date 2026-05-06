@@ -1,0 +1,24 @@
+# Generated forai/wasm build output
+/build/
+*.wasm
+*.wat
+*.js.map
+interface.json
+
+# Local agent/editor state
+/.codex
+/.claude
+/plans/
+
+# Local editor and OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Temporary files
+*.tmp
+*.temp
+*.log

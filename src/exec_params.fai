@@ -1,0 +1,34 @@
+# Execute a SQL statement with bound parameters.
+# Bind values positionally to '?' placeholders.
+# Integers and floats are bound with their native SQLite types; everything
+# else is converted to text. Throws on error.
+def exec_params
+    @param db Connection
+    @param sql String
+    @param params Unknown[]
+    @return Void
+do
+  let stmt Ptr? = null
+  let tail Ptr? = null
+  let rc = sqlite3_prepare_v2(db.handle, sql, -1, stmt, tail)
+  if rc != SQLITE_OK
+    throw Error("forsqlite.exec_params prepare failed: " + sqlite3_errmsg(db.handle))
+  end
+  bind_params(stmt, params)
+  sqlite3_step(stmt)
+  let frc = sqlite3_finalize(stmt)
+  if frc != SQLITE_OK
+    throw Error("forsqlite.exec_params finalize failed")
+  end
+end
+
+test exec_params
+it 'binds positional ? parameters into an INSERT'
+  let db = open(':memory:')
+  exec(db, 'CREATE TABLE t (i INTEGER)')
+  exec_params(db, 'INSERT INTO t VALUES (?)', [42])
+  let rows = query(db, 'SELECT i FROM t')
+  assert.equals(getInt(rows[0], 'i'), 42)
+  close(db)
+end
+end

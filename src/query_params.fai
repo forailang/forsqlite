@@ -1,0 +1,35 @@
+# Execute a SQL query with bound parameters and return rows as dictionaries.
+# Bind values positionally to '?' placeholders.
+# Column types are preserved: INTEGER → Int, REAL → Float, TEXT → String, NULL → null.
+def query_params
+    @param db Connection
+    @param sql String
+    @param params Unknown[]
+    @return Dictionary[]
+do
+  let stmt Ptr? = null
+  let tail Ptr? = null
+  let rc = sqlite3_prepare_v2(db.handle, sql, -1, stmt, tail)
+  if rc != SQLITE_OK
+    throw Error("forsqlite.query_params prepare failed: " + sqlite3_errmsg(db.handle))
+  end
+  bind_params(stmt, params)
+  let rows = collect_rows(stmt)
+  sqlite3_finalize(stmt)
+  rows
+end
+
+test query_params
+it 'filters rows using a bound ? parameter'
+  let db = open(':memory:')
+  exec(db, 'CREATE TABLE t (score INTEGER)')
+  exec(db, 'INSERT INTO t VALUES (3)')
+  exec(db, 'INSERT INTO t VALUES (5)')
+  exec(db, 'INSERT INTO t VALUES (8)')
+  let rows = query_params(db, 'SELECT score FROM t WHERE score > ? ORDER BY score', [4])
+  assert.equals(length(rows), 2)
+  assert.equals(getInt(rows[0], 'score'), 5)
+  assert.equals(getInt(rows[1], 'score'), 8)
+  close(db)
+end
+end

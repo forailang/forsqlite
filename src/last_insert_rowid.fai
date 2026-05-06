@@ -1,0 +1,28 @@
+# Return the rowid of the most recent successful INSERT on this
+# connection. For a table with `INTEGER PRIMARY KEY` this is the
+# value SQLite assigned to the new row, which is the canonical way
+# to retrieve a generated id without `RETURNING`.
+def last_insert_rowid
+    @param db Connection
+    @return Int
+do
+  sqlite3_last_insert_rowid(db.handle)
+end
+
+test last_insert_rowid
+it 'returns the assigned id of the most recent INSERT'
+  let db = open(':memory:')
+  exec(db, 'CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT)')
+  exec(db, "INSERT INTO t (name) VALUES ('alice')")
+  assert.equals(last_insert_rowid(db), 1)
+  exec(db, "INSERT INTO t (name) VALUES ('bob')")
+  assert.equals(last_insert_rowid(db), 2)
+  close(db)
+end
+it 'returns 0 before any INSERT has run'
+  let db = open(':memory:')
+  exec(db, 'CREATE TABLE t (id INTEGER PRIMARY KEY)')
+  assert.equals(last_insert_rowid(db), 0)
+  close(db)
+end
+end

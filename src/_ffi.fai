@@ -1,0 +1,38 @@
+private:
+
+let SQLITE_OK = 0
+
+let SQLITE_ROW = 100
+
+let SQLITE_DONE = 101
+
+let COL_INTEGER = 1
+
+let COL_FLOAT = 2
+
+let COL_TEXT = 3
+
+let COL_NULL = 5
+
+extern sqlite3
+  def sqlite3_libversion() -> String
+  def sqlite3_open(path: String, out db: Ptr) -> Int
+  def sqlite3_close(db: Ptr) -> Int
+  def sqlite3_exec(db: Ptr, sql: String, cb: Ptr, arg: Ptr, err: Ptr) -> Int
+  def sqlite3_prepare_v2(db: Ptr, sql: String, nbyte: Int, out stmt: Ptr, out tail: Ptr) -> Int
+  def sqlite3_step(stmt: Ptr) -> Int
+  def sqlite3_finalize(stmt: Ptr) -> Int
+  def sqlite3_reset(stmt: Ptr) -> Int
+  def sqlite3_column_count(stmt: Ptr) -> Int
+  def sqlite3_column_name(stmt: Ptr, col: Int) -> String
+  def sqlite3_column_type(stmt: Ptr, col: Int) -> Int
+  def sqlite3_column_text(stmt: Ptr, col: Int) -> String
+  def sqlite3_column_int(stmt: Ptr, col: Int) -> Int
+  def sqlite3_column_double(stmt: Ptr, col: Int) -> Float
+  def sqlite3_bind_text(stmt: Ptr, idx: Int, val: String, n: Int, destructor: Ptr) -> Int
+  def sqlite3_bind_int(stmt: Ptr, idx: Int, val: Int) -> Int
+  def sqlite3_bind_double(stmt: Ptr, idx: Int, val: Float) -> Int
+  def sqlite3_bind_null(stmt: Ptr, idx: Int) -> Int
+  def sqlite3_errmsg(db: Ptr) -> String
+  def sqlite3_last_insert_rowid(db: Ptr) -> Int
+end

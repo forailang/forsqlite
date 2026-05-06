@@ -1,0 +1,112 @@
+use std.array
+
+use std.file
+
+use std.path
+
+use std.string
+
+# Apply pending `.sql` migrations from `dir` in lexical filename
+# order. Each applied filename is recorded in the `_fai_migrations`
+# table on the connection so it never runs twice. Returns the number
+# of migrations applied on this call. The whole apply pass runs
+# inside a transaction — if any migration fails the transaction
+# rolls back and the error propagates so a partial schema never
+# survives the call.
+def migrate
+    @param db Connection
+    @param dir String
+    @return Int
+do
+  exec(db, 'CREATE TABLE IF NOT EXISTS _fai_migrations (filename TEXT PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)')
+  let applied_rows = query(db, 'SELECT filename FROM _fai_migrations')
+  var applied String[] = []
+  for row in applied_rows
+    applied = array.append(applied, getString(row, 'filename'))
+  end
+  let entries = file.list(dir)
+  var sql_files String[] = []
+  for entry in entries
+    if string.endsWith(entry, '.sql')
+      sql_files = array.append(sql_files, entry)
+    end
+  end
+  let sorted = array.sort(sql_files)
+  var pending String[] = []
+  for f in sorted
+    let name = "{{f}}"
+    if !array.contains(applied, name)
+      pending = array.append(pending, name)
+    end
+  end
+  if length(pending) == 0
+    0
+  else
+    exec(db, 'BEGIN')
+    try
+      for f in pending
+        let full_path = path.join(dir, f)
+        let sql = file.read(full_path)
+        exec(db, sql)
+        exec_params(db, 'INSERT INTO _fai_migrations (filename) VALUES (?)', [f])
+      end
+      exec(db, 'COMMIT')
+    catch e
+      exec(db, 'ROLLBACK')
+      throw e
+    end
+    length(pending)
+  end
+end
+
+test migrate
+it 'applies pending .sql files in lex order and records each filename'
+  let db = open(':memory:')
+  let n = migrate(db, 'tests/migrations')
+  assert.equals(n, 2)
+  let rows = query(db, 'SELECT filename FROM _fai_migrations ORDER BY filename')
+  assert.equals(length(rows), 2)
+  assert.equals(getString(rows[0], 'filename'), '001_create_users.sql')
+  assert.equals(getString(rows[1], 'filename'), '002_create_tasks.sql')
+  exec(db, "INSERT INTO users (name, email) VALUES ('alice', 'alice@example.com')")
+  let users = query(db, 'SELECT name FROM users')
+  assert.equals(getString(users[0], 'name'), 'alice')
+  close(db)
+end
+it 'is a no-op when re-run after every migration is recorded'
+  let db = open(':memory:')
+  migrate(db, 'tests/migrations')
+  let n = migrate(db, 'tests/migrations')
+  assert.equals(n, 0)
+  close(db)
+end
+it 'ignores non-sql files in the migrations directory'
+  let db = open(':memory:')
+  migrate(db, 'tests/migrations')
+  let rows = query(db, 'SELECT filename FROM _fai_migrations')
+  for row in rows
+    assert.isTrue(string.endsWith(getString(row, 'filename')!, '.sql'))
+  end
+  close(db)
+end
+it 'rolls back the whole pass when one migration fails'
+  let db = open(':memory:')
+  var threw = false
+  try
+    migrate(db, 'tests/migrations_bad')
+  catch e
+    threw = true
+  end
+  assert.isTrue(threw)
+  let recorded = query(db, 'SELECT filename FROM _fai_migrations')
+  assert.equals(length(recorded), 0)
+  var widgets_exists = true
+  try
+    query(db, 'SELECT 1 FROM widgets')
+  catch e
+    widgets_exists = false
+  end
+  assert.isFalse(widgets_exists)
+  close(db)
+end
+end

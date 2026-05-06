@@ -1,0 +1,2 @@
+Non-SQL files in the migrations directory should be ignored by the
+runner — only `*.sql` entries get applied.
