@@ -16,11 +16,13 @@ Add to your `fai.toml`:
 
 ```toml
 [dependencies]
-"file://../forsqlite" = "0.1.0"
+Forsqlite = "https://github.com/forailang/forsqlite"
+# Or for local iteration:
+# Forsqlite = "file://../forsqlite"
 ```
 
-(Path-based dependencies are the supported form today; pinning to git
-URLs is on the forai roadmap.)
+forai will shallow-clone the repo into `~/.fai/cache/git/github.com/forailang/forsqlite/`
+on first build and reuse it after that. To refresh, delete the cache directory.
 
 `libsqlite3` must be available on the host:
 

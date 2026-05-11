@@ -4,15 +4,15 @@ def close
     @param db Connection
     @return Void
 do
-  let rc = sqlite3_close(db.handle)
-  if rc != SQLITE_OK
-    throw Error("forsqlite.close failed")
-  end
+    let rc = sqlite3_close(db.handle)
+    if rc != SQLITE_OK
+        throw Error("forsqlite.close failed")
+    end
 end
 
 test close
-it 'releases an opened connection without error'
-  let db = open(':memory:')
-  close(db)
-end
+    it 'releases an opened connection without error'
+        let db = open(':memory:')
+        close(db)
+    end
 end

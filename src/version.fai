@@ -2,11 +2,11 @@
 def version
     @return String
 do
-  sqlite3_libversion()
+    sqlite3_libversion()
 end
 
 test version
-it 'returns a sqlite3 major-version string'
-  assert.isTrue(length(version()) > 0)
-end
+    it 'returns a sqlite3 major-version string'
+        assert.isTrue(length(version()) > 0)
+    end
 end
