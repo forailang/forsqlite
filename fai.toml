@@ -2,5 +2,6 @@
 name = "Forsqlite"
 version = "0.1.0"
 source_root = "src"
+docs = "docs.md"
 
 [dependencies]
