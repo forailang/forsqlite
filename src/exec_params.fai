@@ -15,8 +15,10 @@ do
         throw Error("forsqlite.exec_params prepare failed: " + sqlite3_errmsg(db.handle))
     end
     bind_params(stmt, params)
+    acquire_conn(db)
     sqlite3_step(stmt)
     let frc = sqlite3_finalize(stmt)
+    release_conn(db)
     if frc != SQLITE_OK
         throw Error("forsqlite.exec_params finalize failed")
     end

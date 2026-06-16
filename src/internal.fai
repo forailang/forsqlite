@@ -6,6 +6,74 @@ use std.dictionary
 
 private:
 
+var in_flight Dictionary = {}
+
+# Connections with an in-flight query, keyed by handle. Concurrent queries on
+# the same connection must serialize: a query's blocking sqlite3_step runs on a
+# boundary worker thread, and two such steps must never touch one sqlite3* at
+# once. acquire_conn cooperatively yields (sleep) until the connection is free,
+# then marks it busy; release_conn frees it. Single-threaded scheduling makes
+# the check-then-mark atomic (no suspension between the loop exit and the set).
+# Different connections are unaffected, so they still run in parallel.
+# Whether `db` currently has a query in flight.
+def conn_busy
+    @param db Connection
+    @return Bool
+do
+    unwrap(getBool(in_flight, "{{db.handle}}"), false)
+end
+
+# Acquire exclusive use of `db` for a query, yielding until it is free.
+def acquire_conn
+    @param db Connection
+    @return Void
+do
+    while conn_busy(db)
+        sleep(1)
+    end
+    in_flight = dictionary.set(in_flight, "{{db.handle}}", true)
+end
+
+# Release a connection previously acquired with acquire_conn.
+def release_conn
+    @param db Connection
+    @return Void
+do
+    in_flight = dictionary.set(in_flight, "{{db.handle}}", false)
+end
+
+test conn_busy
+    it 'reports free, then busy after acquire, then free after release'
+        let db = open(':memory:')
+        assert.isFalse(conn_busy(db))
+        acquire_conn(db)
+        assert.isTrue(conn_busy(db))
+        release_conn(db)
+        assert.isFalse(conn_busy(db))
+        close(db)
+    end
+end
+
+test acquire_conn
+    it 'marks the connection busy'
+        let db = open(':memory:')
+        acquire_conn(db)
+        assert.isTrue(conn_busy(db))
+        release_conn(db)
+        close(db)
+    end
+end
+
+test release_conn
+    it 'frees a busy connection'
+        let db = open(':memory:')
+        acquire_conn(db)
+        release_conn(db)
+        assert.isFalse(conn_busy(db))
+        close(db)
+    end
+end
+
 # Internal helpers — not part of the public API.
 # private: is sticky: everything below this line in this file is private.
 def collect_rows

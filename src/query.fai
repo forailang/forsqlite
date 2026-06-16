@@ -13,8 +13,12 @@ do
     if rc != SQLITE_OK
         throw Error("forsqlite.query prepare failed: " + sqlite3_errmsg(db.handle))
     end
+    # Serialize the stepping (offloaded to a boundary worker) against other
+    # queries on this connection.
+    acquire_conn(db)
     let rows = collect_rows(stmt)
     sqlite3_finalize(stmt)
+    release_conn(db)
     rows
 end
 

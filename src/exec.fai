@@ -6,7 +6,11 @@ def exec
     @return Void
 do
     let err Ptr? = null
+    # sqlite3_exec is offloaded to a boundary worker; serialize it against other
+    # queries on this connection. Release before any throw.
+    acquire_conn(db)
     let rc = sqlite3_exec(db.handle, sql, null, null, err)
+    release_conn(db)
     if rc != SQLITE_OK
         throw Error("forsqlite.exec failed: " + sqlite3_errmsg(db.handle))
     end
