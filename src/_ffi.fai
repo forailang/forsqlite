@@ -33,6 +33,8 @@ extern sqlite3
     def sqlite3_bind_int(stmt: Ptr, idx: Int, val: Int) -> Int
     def sqlite3_bind_double(stmt: Ptr, idx: Int, val: Float) -> Int
     def sqlite3_bind_null(stmt: Ptr, idx: Int) -> Int
+    def sqlite3_enable_load_extension(db: Ptr, onoff: Int) -> Int
+    def sqlite3_load_extension(db: Ptr, path: String, entry_point: Ptr, out error_message: Ptr) -> Int
     def sqlite3_errmsg(db: Ptr) -> String
     def sqlite3_last_insert_rowid(db: Ptr) -> Int
 end

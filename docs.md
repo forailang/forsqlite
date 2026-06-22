@@ -25,6 +25,19 @@ Use `open(':memory:')` for an in-memory database or pass a filesystem path for
 a persistent database. Close persistent connections with `close` when the app is
 done with them.
 
+## SQLite Extensions
+
+Use `load_extension(db, path)` to load a SQLite extension shared library, such
+as `sqlite-vec`, into an existing connection. Forsqlite enables extension
+loading only for the duration of the load call and disables it afterwards.
+
+```fai
+sqlite.load_extension(db, '/path/to/vec0')
+```
+
+If the extension cannot be loaded, `load_extension` throws and the connection
+remains usable for normal SQLite queries.
+
 ## Statements And Queries
 
 Use `exec` for SQL that does not return rows, such as `CREATE TABLE`, `INSERT`,

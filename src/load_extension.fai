@@ -1,0 +1,41 @@
+# Load a SQLite extension from a shared library path.
+# Extension loading is enabled only around the load call.
+def load_extension
+    @param db Connection
+    @param path String
+    @return Void
+do
+    let enableRc = sqlite3_enable_load_extension(db.handle, 1)
+    if enableRc != SQLITE_OK
+        throw Error("forsqlite.load_extension enable failed: " + sqlite3_errmsg(db.handle))
+    end
+    let err Ptr? = null
+    acquire_conn(db)
+    let loadRc = sqlite3_load_extension(db.handle, path, null, err)
+    release_conn(db)
+    let disableRc = sqlite3_enable_load_extension(db.handle, 0)
+    if loadRc != SQLITE_OK
+        throw Error("forsqlite.load_extension failed for " + path + ": " + sqlite3_errmsg(db.handle))
+    end
+    if disableRc != SQLITE_OK
+        throw Error("forsqlite.load_extension disable failed: " + sqlite3_errmsg(db.handle))
+    end
+end
+
+test load_extension
+    it 'throws for a missing extension without breaking the connection'
+        let db = open(':memory:')
+        var threw = false
+        try
+            load_extension(db, '/tmp/forsqlite-missing-extension')
+        catch e
+            threw = true
+        end
+        assert.isTrue(threw)
+        exec(db, 'CREATE TABLE t (i INTEGER)')
+        exec(db, 'INSERT INTO t VALUES (7)')
+        let rows = query(db, 'SELECT i FROM t')
+        assert.equals(getInt(rows[0], 'i'), 7)
+        close(db)
+    end
+end

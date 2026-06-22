@@ -10,7 +10,7 @@ for full forai syntax and features.
 ## Public API
 
 ```fai
-use { open, close, exec, exec_params, query, query_params, last_insert_rowid, migrate, version } from Forsqlite
+use { open, close, exec, exec_params, query, query_params, last_insert_rowid, load_extension, migrate, version } from Forsqlite
 
 # Open / close
 let db = open(':memory:')      # or a file path
@@ -35,6 +35,9 @@ let applied_count = migrate(db, 'db/migrations')
 
 # Metadata
 version()   # → "3.x.x"
+
+# SQLite extensions
+load_extension(db, '/path/to/vec0')
 ```
 
 ## Error Handling
@@ -85,6 +88,7 @@ src/
   exec_params.fai       — exec_params()
   query.fai             — query()
   query_params.fai      — query_params()
+  load_extension.fai    — load_extension() — load a SQLite extension shared library
   last_insert_rowid.fai — last_insert_rowid()
   migrate.fai           — migrate() — apply pending *.sql files, track in _fai_migrations
   version.fai           — version()
