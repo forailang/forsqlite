@@ -37,4 +37,9 @@ extern sqlite3
     def sqlite3_load_extension(db: Ptr, path: String, entry_point: Ptr, out error_message: Ptr) -> Int
     def sqlite3_errmsg(db: Ptr) -> String
     def sqlite3_last_insert_rowid(db: Ptr) -> Int
+    def sqlite3_free(ptr: Ptr) -> Void
+end
+
+extern c
+    def strdup(s: Ptr) -> String
 end

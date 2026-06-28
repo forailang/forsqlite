@@ -1,3 +1,5 @@
+use std.string
+
 # Load a SQLite extension from a shared library path.
 # Extension loading is enabled only around the load call.
 def load_extension
@@ -15,7 +17,15 @@ do
     release_conn(db)
     let disableRc = sqlite3_enable_load_extension(db.handle, 0)
     if loadRc != SQLITE_OK
-        throw Error("forsqlite.load_extension failed for " + path + ": " + sqlite3_errmsg(db.handle))
+        # The real reason is in the `char** pzErrMsg` out-param, not
+        # sqlite3_errmsg (which reports "not an error" for load failures). Read
+        # and free it; fall back to sqlite3_errmsg when it was not set.
+        var detail = sqlite3_errmsg(db.handle)
+        if err?
+            detail = strdup(err!)
+            sqlite3_free(err!)
+        end
+        throw Error("forsqlite.load_extension failed for " + path + ": " + detail)
     end
     if disableRc != SQLITE_OK
         throw Error("forsqlite.load_extension disable failed: " + sqlite3_errmsg(db.handle))
@@ -23,15 +33,18 @@ do
 end
 
 test load_extension
-    it 'throws for a missing extension without breaking the connection'
+    it 'surfaces the real loader error and leaves the connection usable'
         let db = open(':memory:')
-        var threw = false
+        var msg = ''
         try
             load_extension(db, '/tmp/forsqlite-missing-extension')
         catch e
-            threw = true
+            msg = e.message
         end
-        assert.isTrue(threw)
+        # The throw carries the actual loader error from pzErrMsg (e.g. the
+        # dlopen failure), not the masked "not an error" from sqlite3_errmsg.
+        assert.isTrue(string.contains(msg, '/tmp/forsqlite-missing-extension'))
+        assert.isFalse(string.contains(msg, 'not an error'))
         exec(db, 'CREATE TABLE t (i INTEGER)')
         exec(db, 'INSERT INTO t VALUES (7)')
         let rows = query(db, 'SELECT i FROM t')
