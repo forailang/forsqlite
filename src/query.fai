@@ -16,9 +16,22 @@ do
     # Serialize the stepping (offloaded to a boundary worker) against other
     # queries on this connection.
     acquire_conn(db)
-    let rows = collect_rows(stmt)
-    sqlite3_finalize(stmt)
+    # Release the connection even if stepping throws; otherwise conn_busy stays
+    # true forever and every later query spins in acquire_conn (CPU-pegging leak).
+    var rows Dictionary[] = []
+    var failed = false
+    var failMsg = ""
+    try
+        rows = collect_rows(stmt)
+    catch e
+        failed = true
+        failMsg = e.message
+    end
+    let _frc = sqlite3_finalize(stmt)
     release_conn(db)
+    if failed
+        throw Error("forsqlite.query step failed: " + failMsg)
+    end
     rows
 end
 

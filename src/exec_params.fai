@@ -16,9 +16,21 @@ do
     end
     bind_params(stmt, params)
     acquire_conn(db)
-    sqlite3_step(stmt)
+    # Release the connection even if stepping throws; otherwise conn_busy stays
+    # true forever and every later query spins in acquire_conn (CPU-pegging leak).
+    var failed = false
+    var failMsg = ""
+    try
+        sqlite3_step(stmt)
+    catch e
+        failed = true
+        failMsg = e.message
+    end
     let frc = sqlite3_finalize(stmt)
     release_conn(db)
+    if failed
+        throw Error("forsqlite.exec_params step failed: " + failMsg)
+    end
     if frc != SQLITE_OK
         throw Error("forsqlite.exec_params finalize failed")
     end

@@ -15,9 +15,23 @@ do
     end
     bind_params(stmt, params)
     acquire_conn(db)
-    let rows = collect_rows(stmt)
-    sqlite3_finalize(stmt)
+    # collect_rows steps the statement (offloaded) and can throw. The connection
+    # MUST be released even then — otherwise conn_busy stays true forever and
+    # every later query spins in acquire_conn's retry loop (a CPU-pegging leak).
+    var rows Dictionary[] = []
+    var failed = false
+    var failMsg = ""
+    try
+        rows = collect_rows(stmt)
+    catch e
+        failed = true
+        failMsg = e.message
+    end
+    let _frc = sqlite3_finalize(stmt)
     release_conn(db)
+    if failed
+        throw Error("forsqlite.query_params step failed: " + failMsg)
+    end
     rows
 end
 
