@@ -18,6 +18,7 @@ extern sqlite3
     def sqlite3_libversion() -> String
     def sqlite3_open(path: String, out db: Ptr) -> Int
     def sqlite3_close(db: Ptr) -> Int
+    def sqlite3_close_v2(db: Ptr) -> Int
     def sqlite3_exec(db: Ptr, sql: String, cb: Ptr, arg: Ptr, err: Ptr) -> Int
     def sqlite3_prepare_v2(db: Ptr, sql: String, nbyte: Int, out stmt: Ptr, out tail: Ptr) -> Int
     def sqlite3_step(stmt: Ptr) -> Int

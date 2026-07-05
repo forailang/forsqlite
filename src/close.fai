@@ -1,12 +1,23 @@
 # Close a database connection and release its resources.
-# Throws if SQLite reports an error (e.g. connection is still busy).
+#
+# Uses `sqlite3_close_v2`, SQLite's host-language-friendly close. If any
+# prepared statements (or BLOB handles / backups) on this connection are
+# still unfinalized when close is called, it frees what it can and defers
+# the rest until those are finalized, returning SQLITE_OK — rather than
+# failing with SQLITE_BUSY the way plain `sqlite3_close` does. So a stray
+# unfinalized statement from an earlier error path no longer turns a
+# routine close into a spurious throw.
+#
+# It still throws on a genuine error (e.g. an invalid handle / double
+# close), and the message now carries `sqlite3_errmsg` like the rest of
+# the library instead of a bare "failed".
 def close
     @param db Connection
     @return Void
 do
-    let rc = sqlite3_close(db.handle)
+    let rc = sqlite3_close_v2(db.handle)
     if rc != SQLITE_OK
-        throw Error("forsqlite.close failed")
+        throw Error("forsqlite.close failed: " + sqlite3_errmsg(db.handle))
     end
 end
 
