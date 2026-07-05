@@ -10,17 +10,18 @@ def exec_params
 do
     let stmt Ptr? = null
     let tail Ptr? = null
+    acquire_conn(db)
     let rc = sqlite3_prepare_v2(db.handle, sql, -1, stmt, tail)
     if rc != SQLITE_OK
+        release_conn(db)
         throw Error("forsqlite.exec_params prepare failed: " + sqlite3_errmsg(db.handle))
     end
-    bind_params(stmt, params)
-    acquire_conn(db)
-    # Release the connection even if stepping throws; otherwise conn_busy stays
-    # true forever and every later query spins in acquire_conn (CPU-pegging leak).
+    # Release the connection even if binding or stepping throws; otherwise
+    # conn_busy stays true forever and every later query spins in acquire_conn.
     var failed = false
     var failMsg = ""
     try
+        bind_params(stmt, params)
         sqlite3_step(stmt)
     catch e
         failed = true

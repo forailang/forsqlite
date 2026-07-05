@@ -9,15 +9,14 @@ def query
 do
     let stmt Ptr? = null
     let tail Ptr? = null
+    acquire_conn(db)
     let rc = sqlite3_prepare_v2(db.handle, sql, -1, stmt, tail)
     if rc != SQLITE_OK
+        release_conn(db)
         throw Error("forsqlite.query prepare failed: " + sqlite3_errmsg(db.handle))
     end
-    # Serialize the stepping (offloaded to a boundary worker) against other
-    # queries on this connection.
-    acquire_conn(db)
     # Release the connection even if stepping throws; otherwise conn_busy stays
-    # true forever and every later query spins in acquire_conn (CPU-pegging leak).
+    # true forever and every later query spins in acquire_conn.
     var rows Dictionary[] = []
     var failed = false
     var failMsg = ""

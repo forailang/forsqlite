@@ -7,15 +7,16 @@ def load_extension
     @param path String
     @return Void
 do
+    acquire_conn(db)
     let enableRc = sqlite3_enable_load_extension(db.handle, 1)
     if enableRc != SQLITE_OK
+        release_conn(db)
         throw Error("forsqlite.load_extension enable failed: " + sqlite3_errmsg(db.handle))
     end
     let err Ptr? = null
-    acquire_conn(db)
     let loadRc = sqlite3_load_extension(db.handle, path, null, err)
-    release_conn(db)
     let disableRc = sqlite3_enable_load_extension(db.handle, 0)
+    release_conn(db)
     if loadRc != SQLITE_OK
         # The real reason is in the `char** pzErrMsg` out-param, not
         # sqlite3_errmsg (which reports "not an error" for load failures). Read
