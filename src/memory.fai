@@ -1,0 +1,38 @@
+# SQLite's own heap accounting. Because forsqlite reaches libsqlite3 through
+# FFI, every DB handle, page cache, and prepared statement is allocated with
+# C malloc in the *host* process — so it counts toward process RSS, but lives
+# in a pool separate from the wasm guest heap. These read that pool directly,
+# which lets a caller decompose RSS into "sqlite" vs "everything else".
+
+# Bytes of memory sqlite currently has checked out from malloc.
+def memoryUsed
+    @return Int
+do
+    sqlite3_memory_used()
+end
+
+# The peak value of memoryUsed() since the process started (or since the last
+# reset). Pass reset=true to reset the high-water mark to the current usage
+# after reading it.
+def memoryHighwater
+    @param reset Bool
+    @return Int
+do
+    if reset
+        sqlite3_memory_highwater(1)
+    else
+        sqlite3_memory_highwater(0)
+    end
+end
+
+test memoryUsed
+    it 'reports a non-negative byte count'
+        assert.isTrue(memoryUsed() >= 0)
+    end
+end
+
+test memoryHighwater
+    it 'is at least the current usage'
+        assert.isTrue(memoryHighwater(false) >= memoryUsed())
+    end
+end

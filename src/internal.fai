@@ -148,7 +148,11 @@ do
                     if is_float(val)
                         sqlite3_bind_double(stmt, idx, val)
                     else
-                        sqlite3_bind_text(stmt, idx, "{{val}}", -1, null)
+                        # 5th arg is SQLITE_TRANSIENT ((void*)-1): copy the bytes
+                        # now. SQLITE_STATIC (null) would keep our pointer and read
+                        # it at step time, but the fai FFI frees marshaled string
+                        # args once the call returns, so the bytes must be copied.
+                        sqlite3_bind_text(stmt, idx, "{{val}}", -1, -1)
                     end
                 end
             end

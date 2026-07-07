@@ -30,7 +30,7 @@ extern sqlite3
     def sqlite3_column_text(stmt: Ptr, col: Int) -> String
     def sqlite3_column_int(stmt: Ptr, col: Int) -> Int
     def sqlite3_column_double(stmt: Ptr, col: Int) -> Float
-    def sqlite3_bind_text(stmt: Ptr, idx: Int, val: String, n: Int, destructor: Ptr) -> Int
+    def sqlite3_bind_text(stmt: Ptr, idx: Int, val: String, n: Int, destructor: Int) -> Int
     def sqlite3_bind_int(stmt: Ptr, idx: Int, val: Int) -> Int
     def sqlite3_bind_double(stmt: Ptr, idx: Int, val: Float) -> Int
     def sqlite3_bind_null(stmt: Ptr, idx: Int) -> Int
@@ -39,6 +39,8 @@ extern sqlite3
     def sqlite3_errmsg(db: Ptr) -> String
     def sqlite3_last_insert_rowid(db: Ptr) -> Int
     def sqlite3_free(ptr: Ptr) -> Void
+    def sqlite3_memory_used() -> Int
+    def sqlite3_memory_highwater(resetFlag: Int) -> Int
 end
 
 extern c

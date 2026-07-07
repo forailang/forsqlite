@@ -34,11 +34,25 @@ let id = last_insert_rowid(db)
 let applied_count = migrate(db, 'db/migrations')
 
 # Metadata
-version()   # → "3.x.x"
+version()          # → "3.x.x"
+memoryUsed()       # → bytes sqlite currently holds from malloc (host RSS)
+memoryHighwater(false)  # → peak memoryUsed(); pass true to reset the mark
 
 # SQLite extensions
 load_extension(db, '/path/to/vec0')
 ```
+
+## Memory: FFI string lifetime
+
+`exec_params` / `query_params` bind text values with **SQLITE_TRANSIENT**, so
+sqlite copies the bytes during the bind call. This is required: the fai FFI
+frees a marshaled string argument once the extern call returns, so binding with
+SQLITE_STATIC (a null destructor) would leave sqlite holding a dangling pointer
+that `sqlite3_step` then reads. Do not "optimize" a bind back to SQLITE_STATIC.
+
+`memoryUsed()` / `memoryHighwater()` read sqlite's own malloc pool — separate
+from the wasm guest heap, but part of process RSS — which lets a caller
+decompose RSS into "sqlite" vs "everything else" when chasing a memory issue.
 
 ## Error Handling
 
